@@ -98,6 +98,7 @@ require_relative "csv/fields_converter"
 require_relative "csv/input_record_separator"
 require_relative "csv/parser"
 require_relative "csv/row"
+require_relative "csv/sniffer"
 require_relative "csv/table"
 require_relative "csv/writer"
 
@@ -1898,6 +1899,17 @@ class CSV
     def parse_line(line, **options)
       new(line, **options).each.first
     end
+
+    # Examines at most +byte_budget+ bytes and returns ranked dialect
+    # candidates with structural evidence. A result with +status+ +:uncertain+
+    # does not choose a default comma; the caller can inspect +candidates+ and
+    # create a reader with an explicit candidate.
+    def sniff(input, **options)
+      result = Sniffer.new(**options).sniff(input)
+      return result unless block_given?
+      yield(result, -> { result.reader })
+    end
+    alias_method :probe, :sniff
 
     #
     # :call-seq:
