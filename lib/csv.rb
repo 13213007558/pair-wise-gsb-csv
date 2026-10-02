@@ -96,6 +96,7 @@ require "stringio"
 
 require_relative "csv/fields_converter"
 require_relative "csv/input_record_separator"
+require_relative "csv/dialect"
 require_relative "csv/parser"
 require_relative "csv/row"
 require_relative "csv/table"
@@ -1929,6 +1930,47 @@ class CSV
     # Alias for CSV.read.
     def readlines(path_or_io, **options)
       read(path_or_io, **options)
+    end
+
+    # :call-seq:
+    #   CSV.sniff(string_or_io, max_bytes: CSV::Dialect::DEFAULT_MAX_BYTES) -> csv_sniff_result
+    #
+    # Probes the dialect of CSV data of unknown origin. Within an
+    # explicit byte budget it compares candidate column separators,
+    # quote characters and record (line) separators with a
+    # quote-aware analysis, and returns a CSV::SniffResult holding the
+    # ranked CSV::Dialect candidates, the collected evidence and any
+    # ambiguity that could not be resolved.
+    #
+    # Characters are never counted blindly: separators and newlines
+    # inside quoted fields are ignored.
+    #
+    # When the evidence is decisive the result's winning dialect is
+    # available through CSV::SniffResult#best / #resolved and the
+    # probed source can be read from its first byte with #csv or
+    # #parse. When the evidence is insufficient or ambiguous the result
+    # is not certain; #csv/#parse raise CSV::IndeterminateError rather
+    # than silently defaulting to a comma. Inspect
+    # CSV::SniffResult#candidates, #reasons and #evidence to decide
+    # what to do (request more bytes, force #best, or fail).
+    #
+    # Non-seekable IO is supported: the bytes consumed while sniffing
+    # are buffered and replayed, so reading starts at the original
+    # first byte. When the sampled bytes end inside an unfinished
+    # quoted field, CSV::SniffResult#truncated? distinguishes "the
+    # sample just ends too early" from CSV::SniffResult#corrupt?
+    # ("every dialect fails on the available data").
+    #
+    #   result = CSV.sniff("a;b\nc;d\n")
+    #   result.certain?          # => true
+    #   result.best.col_sep      # => ";"
+    #   result.parse             # => [["a", "b"], ["c", "d"]]
+    #
+    #   result = CSV.sniff("a,b\nc,d\ne;f\ng;h\n")
+    #   result.certain?          # => false
+    #   result.ambiguous?        # => true
+    def sniff(source, max_bytes: Dialect::DEFAULT_MAX_BYTES)
+      DialectProbe.call(source, max_bytes)
     end
 
     # :call-seq:

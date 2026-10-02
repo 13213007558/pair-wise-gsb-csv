@@ -1,5 +1,20 @@
 # News
 
+## Next
+
+### New Features
+
+  * Added `CSV.sniff`, an entry point for probing the dialect of CSV
+    data of unknown origin. Within an explicit byte budget it compares
+    candidate column separators, quote characters and record
+    separators with a quote-aware analysis and returns a
+    `CSV::SniffResult` of ranked `CSV::Dialect` candidates, their
+    evidence and any unresolvable ambiguity. It returns an indeterminate
+    result instead of silently assuming a comma, distinguishes a
+    truncated sample from corrupt data, and supports non-seekable IO by
+    replaying consumed bytes so reading can still start at the first
+    byte.
+
 ## 3.3.6 - 2026-07-27
 
 ### Improvements
