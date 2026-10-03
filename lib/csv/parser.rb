@@ -694,7 +694,7 @@ class CSV
       if separator == :auto
         cr = "\r".encode(@encoding)
         lf = "\n".encode(@encoding)
-        if @input.is_a?(StringIO)
+        if @input.is_a?(StringIO) || @input.respond_to?(:csv_dialect_readable_prefix?)
           pos = @input.pos
           separator = detect_row_separator(@input.read, cr, lf)
           @input.seek(pos)
@@ -828,7 +828,7 @@ class CSV
     def may_quoted?
       return false if @quote_character.nil?
 
-      if @input.is_a?(StringIO)
+      if @input.is_a?(StringIO) || @input.respond_to?(:csv_dialect_readable_prefix?)
         pos = @input.pos
         sample = @input.read
         @input.seek(pos)
@@ -865,7 +865,7 @@ class CSV
         inputs = @samples.collect do |sample|
           UnoptimizedStringIO.new(sample)
         end
-        if @input.is_a?(StringIO)
+        if @input.is_a?(StringIO) || @input.respond_to?(:csv_dialect_readable_prefix?)
           inputs << UnoptimizedStringIO.new(@input.read)
         else
           inputs << @input
@@ -885,7 +885,9 @@ class CSV
     else
       def build_scanner
         string = nil
-        if @samples.empty? and @input.is_a?(StringIO)
+        if @samples.empty? and
+           (@input.is_a?(StringIO) ||
+            @input.respond_to?(:csv_dialect_readable_prefix?))
           string = @input.read
         elsif @samples.size == 1 and Parser.eof?(@input)
           string = @samples[0]

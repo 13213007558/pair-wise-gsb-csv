@@ -95,6 +95,7 @@ require "time"
 require "stringio"
 
 require_relative "csv/fields_converter"
+require_relative "csv/dialect"
 require_relative "csv/input_record_separator"
 require_relative "csv/parser"
 require_relative "csv/row"
@@ -980,6 +981,38 @@ class CSV
   }.freeze
 
   class << self
+    # :call-seq:
+    #   CSV.detect_dialect(io, byte_budget:, dialects: nil,
+    #                       col_separators: ..., row_separators: ...,
+    #                       quote_chars: ...) -> detection
+    #
+    # Reads at most +byte_budget+ bytes from +io+ and ranks CSV dialects made
+    # from the caller-provided candidate separators and quote characters.
+    #
+    # The returned object keeps the read prefix and exposes an IO that starts
+    # at the beginning of that prefix, so the source does not need to support
+    # seek or rewind. Its best dialect is nil when the sample is insufficient
+    # or two candidates are tied.
+    def detect_dialect(io,
+                       byte_budget:,
+                       dialects: nil,
+                       col_separators: Dialect::DEFAULT_COL_SEPARATORS,
+                       row_separators: Dialect::DEFAULT_ROW_SEPARATORS,
+                       quote_chars: Dialect::DEFAULT_QUOTE_CHARACTERS)
+      input = io.is_a?(String) ? StringIO.new(io) : io
+      unless byte_budget.is_a?(Integer) && byte_budget > 0
+        raise ArgumentError.new("byte_budget must be positive")
+      end
+
+      candidate_dialects = dialects ||
+        col_separators.product(row_separators,
+                               quote_chars).collect do |col_sep, row_sep, quote_char|
+          {col_sep: col_sep, row_sep: row_sep, quote_char: quote_char}
+        end
+      Dialect::Detector.new(input, candidate_dialects, byte_budget).detect
+    end
+    alias_method :sniff, :detect_dialect
+
     # :call-seq:
     #   instance(string, **options)
     #   instance(io = $stdout, **options)
