@@ -95,6 +95,7 @@ require "time"
 require "stringio"
 
 require_relative "csv/fields_converter"
+require_relative "csv/dialect_sniffer"
 require_relative "csv/input_record_separator"
 require_relative "csv/parser"
 require_relative "csv/row"
